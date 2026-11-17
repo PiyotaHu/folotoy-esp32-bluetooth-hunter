@@ -61,7 +61,7 @@ int main(void)
     assert(view.level == FINDER_LEVEL_VERY_CLOSE);
 
     (void)finder_model_on_button(&model, FINDER_BTN_DOWN, now + 130U);
-    assert(model.prefs.volume == 60U);
+    assert(model.prefs.volume == 30U);
     (void)finder_model_on_button(&model, FINDER_BTN_OK_LONG, now + 140U);
     assert(model.state == FINDER_STATE_SETTINGS);
     (void)finder_model_on_button(&model, FINDER_BTN_OK, now + 150U);

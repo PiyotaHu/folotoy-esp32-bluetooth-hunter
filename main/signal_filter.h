@@ -5,7 +5,9 @@
 
 #include "finder_types.h"
 
-#define SIGNAL_WINDOW 7U
+/* Short median window: reject a single bad advertisement without lagging
+ * several seconds behind a real move away from the device. */
+#define SIGNAL_WINDOW 3U
 #define SIGNAL_HISTORY 10U
 
 typedef struct {

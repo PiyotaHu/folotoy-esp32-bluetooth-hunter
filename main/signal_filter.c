@@ -11,28 +11,33 @@
  * The old 1.2-2 s "unseen" window reset the filter between ordinary packets,
  * which is why tracking kept falling back to "no signal". Keep these generous
  * enough to ride out real broadcast gaps; the level still decays on tick. */
+/* Responsiveness vs. jitter. The list itself is stabilized by a separate
+ * frozen sort key (see finder_model.c), so the signal filter can afford to
+ * track real movement quickly: when you walk away the bar, arrow and beep
+ * cadence should change within ~1 s, not several seconds. Median(SIGNAL_WINDOW)
+ * removes lone outliers; a modest EMA damps normal advertising jitter. */
 static const signal_config_t PROFILE_FAST = {
     .thresholds = {-83, -72, -61, -49},
-    .hysteresis_db = 3,
-    .ema_shift = 2,           // alpha = 1/4: responsive, still damped
+    .hysteresis_db = 2,
+    .ema_shift = 1,           // alpha = 1/2
     .unseen_timeout_ms = 4000,
-    .trend_window_ms = 1400,
+    .trend_window_ms = 900,
 };
 
 static const signal_config_t PROFILE_NORMAL = {
     .thresholds = {-83, -72, -61, -49},
-    .hysteresis_db = 4,
-    .ema_shift = 3,           // alpha = 1/8
+    .hysteresis_db = 2,
+    .ema_shift = 2,           // alpha = 1/4
     .unseen_timeout_ms = 5000,
-    .trend_window_ms = 1800,
+    .trend_window_ms = 1100,
 };
 
 static const signal_config_t PROFILE_STABLE = {
     .thresholds = {-83, -72, -61, -49},
-    .hysteresis_db = 5,
-    .ema_shift = 4,           // alpha = 1/16
+    .hysteresis_db = 3,
+    .ema_shift = 3,           // alpha = 1/8
     .unseen_timeout_ms = 6500,
-    .trend_window_ms = 2400,
+    .trend_window_ms = 1500,
 };
 
 static bool config_valid(const signal_config_t *config)

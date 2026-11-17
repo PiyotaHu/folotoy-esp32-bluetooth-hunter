@@ -54,8 +54,18 @@ int main(void)
     assert(signal_filter_trend(&filter, 22700U, &delta) == FINDER_TREND_AWAY);
     assert(delta <= -4);
 
-    assert(signal_filter_tick(&filter, 30000U) == FINDER_LEVEL_OUT);
-    assert(!signal_filter_fresh(&filter, 30000U));
+    /* Walking away must show up within a few advertisements, not seconds.
+     * Settle close, then feed a clearly weaker signal; the value should drop
+     * sharply in only a handful of 100 ms samples. */
+    feed(&filter, -45, 24000U);
+    assert(signal_filter_value(&filter) >= -47);
+    for (uint8_t i = 0U; i < 5U; ++i) {
+        (void)signal_filter_add(&filter, -80, 28000U + (uint32_t)i * 100U);
+    }
+    assert(signal_filter_value(&filter) <= -62);
+
+    assert(signal_filter_tick(&filter, 34000U) == FINDER_LEVEL_OUT);
+    assert(!signal_filter_fresh(&filter, 34000U));
     assert(signal_filter_value(&filter) == INT8_MIN);
 
     puts("test_signal_filter: PASS");

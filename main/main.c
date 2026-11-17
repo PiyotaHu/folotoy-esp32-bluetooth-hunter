@@ -61,6 +61,10 @@ static bool s_render_valid;
 static uint32_t s_last_render_ms;
 static uint32_t s_last_battery_ms;
 static uint32_t s_last_save_request_ms;
+/* Last volume pushed to the audio task. prefs.volume can change at runtime
+ * (tracking-page UP/DOWN shortcut or the settings page); without forwarding it
+ * the setting was only saved/displayed but the beeps stayed at the old level. */
+static uint8_t s_applied_volume = UINT8_MAX;
 static int16_t s_battery = -1;
 
 static uint32_t now_ms(void)
@@ -144,6 +148,12 @@ static void play(finder_cue_t cue, finder_level_t level)
 static void dispatch_actions(finder_actions_t actions, uint32_t timestamp_ms)
 {
     finder_level_t level = s_model.reported_level;
+
+    /* Keep the audio task in sync whenever the stored volume changes. */
+    if (s_audio_ready && s_applied_volume != s_model.prefs.volume) {
+        s_applied_volume = s_model.prefs.volume;
+        (void)finder_audio_set_volume(s_applied_volume);
+    }
 
     if ((actions & FINDER_ACTION_CUE_LOCK) != 0U &&
         s_model.prefs.sound_enabled) {

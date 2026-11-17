@@ -13,7 +13,9 @@
 #define FINDER_AUDIO_CHUNK 512U
 #define FINDER_AUDIO_STACK 4096U
 #define FINDER_AUDIO_PRIORITY 4U
-#define FINDER_AUDIO_DEFAULT_VOLUME 70U
+/* Default kept deliberately modest: the beeps play repeatedly while walking,
+ * so 70% was uncomfortably loud on first boot. */
+#define FINDER_AUDIO_DEFAULT_VOLUME 40U
 
 typedef enum {
     AUDIO_COMMAND_CUE = 0,

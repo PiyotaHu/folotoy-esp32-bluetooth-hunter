@@ -21,7 +21,7 @@ void finder_preferences_defaults(finder_preferences_t *prefs)
         return;
     }
     prefs->sound_enabled = true;
-    prefs->volume = 70U;
+    prefs->volume = 40U;
     prefs->match_by_name = false;
     prefs->profile = FINDER_PROFILE_NORMAL;
 }
