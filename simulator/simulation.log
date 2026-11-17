@@ -1,0 +1,21 @@
+=== BLE Signal Finder host simulation ===
+step 1: discover phone and earbuds, lock the stronger device
+locked target: AA:BB:CC:DD:EE:FF
+step 2: walk towards target (-86 -> -35 dBm)
+  1100 ms | OUT    |  -88 dBm | STABLE | present=1
+  2100 ms | OUT    |  -84 dBm | CLOSER | present=1
+  3100 ms | FAR    |  -75 dBm | CLOSER | present=1
+  4100 ms | NEAR   |  -65 dBm | CLOSER | present=1
+  5100 ms | CLOSE  |  -56 dBm | CLOSER | present=1
+  6100 ms | CLOSE  |  -46 dBm | CLOSER | present=1
+step 3: walk away (-35 -> -82 dBm)
+  7100 ms | VERY   |  -36 dBm | CLOSER | present=1
+  8100 ms | VERY   |  -38 dBm | STABLE | present=1
+  9100 ms | VERY   |  -46 dBm | AWAY   | present=1
+ 10100 ms | CLOSE  |  -56 dBm | AWAY   | present=1
+ 11100 ms | NEAR   |  -66 dBm | AWAY   | present=1
+ 12100 ms | FAR    |  -77 dBm | AWAY   | present=1
+step 4: target disappears, timeout to NO SIGNAL
+ 19000 ms | OUT    |    0 dBm | STABLE | present=0
+step 5: settings round-trip
+simulation: PASS (far/close/very-close, both trends, loss timeout)

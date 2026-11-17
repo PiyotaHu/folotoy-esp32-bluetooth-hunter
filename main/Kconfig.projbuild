@@ -1,0 +1,11 @@
+menu "BLE Signal Finder"
+
+config FINDER_EMULATOR_BUILD
+    bool "Simulator QA build with synthetic BLE reports"
+    default n
+    help
+        Replace the NimBLE observer with a deterministic synthetic report
+        source. Use only for PassportSim UI/interaction testing. Keep this
+        disabled for release firmware.
+
+endmenu

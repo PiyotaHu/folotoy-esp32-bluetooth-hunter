@@ -1,0 +1,3 @@
+b9589914dbf130234dc61cf6fffcdc626b0efd318d7d16b57c91247218a1e78a  build/FoloToy-AI-Passport-full.bin
+4b88efe7e08d5481afc898dd6854abc5455faf2b417990b0f336ab190a9a0ec2  cover.jpg
+87eb578441729ae1e9b4c9a1037e8d59c244449ffa69915d0221316c76dd0ec3  simulator/simulation.log
