@@ -87,7 +87,7 @@ static lv_obj_t *block(lv_obj_t *parent, int x, int y, int w, int h, uint32_t co
 static void header(void)
 {
     block(s_screen, 0, 0, 240, 46, COLOR_PANEL);
-    label(s_screen, "蓝牙信号猎手", &finder_font_20, COLOR_CYAN,
+    label(s_screen, "蓝牙寻物探测器", &finder_font_20, COLOR_CYAN,
           LV_ALIGN_TOP_LEFT, 12, 11);
     s_battery_label = label(s_screen, "--%", &finder_font_14, COLOR_MUTED,
                             LV_ALIGN_TOP_RIGHT, -12, 15);
