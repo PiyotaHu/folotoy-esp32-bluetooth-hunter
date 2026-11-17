@@ -53,6 +53,19 @@ enum {
     UUID_GOOGLE_FAST_PAIR = 0xFE2C,
 };
 
+/* name[] is longer than label[]. A bounded copy avoids -Wformat-truncation
+ * while guaranteeing the LVGL label is always NUL-terminated. */
+static void copy_label(char *dest, size_t dest_size, const char *src)
+{
+    size_t i = 0U;
+
+    while (i + 1U < dest_size && src[i] != '\0') {
+        dest[i] = src[i];
+        ++i;
+    }
+    dest[i] = '\0';
+}
+
 static const char *kind_text(finder_device_kind_t kind)
 {
     switch (kind) {
@@ -327,9 +340,7 @@ void device_label_apply(const device_label_info_t *info,
         report->has_name = true;
     }
     if (report->has_name && report->name[0] != '\0') {
-        /* label[] is shorter than name[]; truncate through snprintf so no
-         * unterminated or out-of-bounds bytes can reach the LVGL label. */
-        (void)snprintf(report->label, sizeof(report->label), "%s", report->name);
+        copy_label(report->label, sizeof(report->label), report->name);
         report->label_inferred = false;
         return;
     }

@@ -2,7 +2,6 @@
 
 #include <limits.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <string.h>
 
 #define SETTINGS_CUE_MS 280U
@@ -222,6 +221,19 @@ finder_target_t finder_model_target(const finder_model_t *model)
     return model == NULL || !model->target_locked ? empty : model->target;
 }
 
+/* name[] is longer than label[]. An explicit bounded copy keeps the string
+ * terminated without tripping -Wformat-truncation in strict CI builds. */
+static void copy_label(char *dest, size_t dest_size, const char *src)
+{
+    size_t i = 0U;
+
+    while (i + 1U < dest_size && src[i] != '\0') {
+        dest[i] = src[i];
+        ++i;
+    }
+    dest[i] = '\0';
+}
+
 /* Advertising data and scan-response data arrive as separate reports. Merge
  * whichever identity is most informative instead of keeping the first one. */
 static void refresh_identity(finder_device_t *device,
@@ -232,8 +244,7 @@ static void refresh_identity(finder_device_t *device,
          strlen(report->name) > strlen(device->name))) {
         memcpy(device->name, report->name, sizeof(device->name));
         device->has_name = true;
-        (void)snprintf(device->label, sizeof(device->label), "%s",
-                       device->name);
+        copy_label(device->label, sizeof(device->label), device->name);
         device->label_inferred = false;
     }
     if (!device->has_name && report->label[0] != '\0' &&
