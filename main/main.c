@@ -13,6 +13,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/task.h"
 
 #include "ble_scan.h"
 #include "finder_audio.h"
@@ -22,8 +23,13 @@
 #include "finder_ui.h"
 #include "key_guard.h"
 
-#define EVENT_QUEUE_LENGTH 32U
+#define EVENT_QUEUE_LENGTH 64U
 #define WORKER_TICK_MS 40U
+/* Bound the number of events drained per loop. With a continuous BLE scan the
+ * queue never empties; an unbounded drain keeps this task runnable forever and
+ * starves the IDLE task and the LVGL refresh task (task watchdog / frozen UI).
+ * After each bounded batch we always yield at least one tick. */
+#define MAX_EVENTS_PER_LOOP 8U
 #define BATTERY_POLL_MS 30000U
 #define UI_MIN_INTERVAL_MS 80U
 #define SAVE_DEBOUNCE_MS 2000U
@@ -293,9 +299,14 @@ void app_main(void)
     while (true) {
         finder_actions_t actions = FINDER_ACTION_NONE;
         uint32_t wait_ms = WORKER_TICK_MS;
+        uint8_t handled = 0U;
 
-        while (xQueueReceive(s_events, &event, pdMS_TO_TICKS(wait_ms)) == pdTRUE) {
+        /* Only the first receive blocks. The rest are non-blocking and capped,
+         * so a saturated queue can never turn into an infinite busy loop. */
+        while (handled < MAX_EVENTS_PER_LOOP &&
+               xQueueReceive(s_events, &event, pdMS_TO_TICKS(wait_ms)) == pdTRUE) {
             wait_ms = 0U;
+            ++handled;
             timestamp_ms = now_ms();
             if (event.type == EVENT_BLE_REPORT) {
                 actions |= finder_model_on_report(&s_model, &event.data.report,
@@ -316,5 +327,8 @@ void app_main(void)
             render(timestamp_ms, false);
         }
         save_if_due(timestamp_ms, false);
+        /* Unconditional yield: guarantees IDLE and the LVGL port task get CPU
+         * even when advertisements arrive faster than we can retire them. */
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }

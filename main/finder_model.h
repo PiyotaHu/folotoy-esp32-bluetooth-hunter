@@ -7,14 +7,34 @@
 #include "finder_types.h"
 #include "signal_filter.h"
 
-#define FINDER_DEVICE_TIMEOUT_MS 5000U
+/* Devices stay in the nearby list for this long without a fresh packet.
+ * Consumer BLE gear often advertises at 1-3 s (some only when woken), so a
+ * short window made rows appear/disappear constantly. */
+#define FINDER_DEVICE_TIMEOUT_MS 10000U
+
+/* After locking, give the radio time to catch the next advertisement before
+ * the UI is allowed to say "no signal". */
+#define FINDER_TARGET_GRACE_MS 4000U
+
+/* Once a packet is missed, hold the last reading instead of blanking the UI. */
+#define FINDER_TARGET_HOLD_MS 5000U
+
+/* The list order is frozen per device. It only changes when its smoothed
+ * signal has moved by this much AND the change has been sustained. */
+#define FINDER_SORT_HYSTERESIS_DB 12
+#define FINDER_SORT_MIN_INTERVAL_MS 3000U
 
 typedef struct {
     uint8_t addr[FINDER_ADDR_LEN];
     uint8_t addr_type;
     char name[FINDER_NAME_LEN];
+    char label[FINDER_LABEL_LEN];
+    finder_device_kind_t kind;
     bool has_name;
+    bool label_inferred;
     signal_filter_t filter;
+    int8_t sort_rssi;          /* frozen ordering key, not live RSSI */
+    uint32_t sort_updated_ms;
     uint32_t first_seen_ms;
     uint32_t last_seen_ms;
     uint16_t packets;
@@ -25,6 +45,19 @@ typedef struct {
     uint8_t count;
     finder_target_t target;
     bool target_locked;
+    /* Tracking state lives here, independent of the nearby list. A target can
+     * never lose its signal just because a crowded list evicted its row. */
+    signal_filter_t target_filter;
+    bool target_filter_valid;
+    uint32_t target_last_seen_ms;
+    uint32_t target_locked_ms;
+    int8_t target_hold_rssi;
+    finder_level_t target_hold_level;
+    bool target_ever_seen;
+    /* The selection follows a device, never a moving row index. */
+    uint8_t cursor_addr[FINDER_ADDR_LEN];
+    uint8_t cursor_addr_type;
+    bool cursor_pinned;
     finder_state_t state;
     finder_state_t settings_return_state;
     finder_setting_t setting_focus;

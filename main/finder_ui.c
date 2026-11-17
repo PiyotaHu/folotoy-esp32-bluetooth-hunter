@@ -250,8 +250,8 @@ static void refresh_scan(const finder_ui_model_t *model)
         }
         lv_obj_clear_flag(s_scan_rows[row], LV_OBJ_FLAG_HIDDEN);
         const finder_device_view_t *device = &model->devices[index];
-        if (device->has_name) {
-            lv_label_set_text(s_scan_names[row], device->name);
+        if (device->label[0] != '\0') {
+            lv_label_set_text(s_scan_names[row], device->label);
         } else {
             (void)snprintf(text, sizeof(text), "%02X:%02X:%02X:%02X:%02X:%02X",
                            device->addr[0], device->addr[1], device->addr[2],
@@ -278,7 +278,9 @@ static void refresh_track(const finder_ui_model_t *model)
     char text[80];
     uint32_t color = level_color(model->level);
 
-    if (model->target_valid && model->target.has_name) {
+    if (model->target_valid && model->target.label[0] != '\0') {
+        lv_label_set_text(s_track_title, model->target.label);
+    } else if (model->target_valid && model->target.has_name) {
         lv_label_set_text(s_track_title, model->target.name);
     } else if (model->target_valid) {
         (void)snprintf(text, sizeof(text), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -289,7 +291,13 @@ static void refresh_track(const finder_ui_model_t *model)
     } else {
         lv_label_set_text(s_track_title, "未锁定目标");
     }
-    if (model->target_valid && model->target_present) {
+    if (model->target_valid && model->target_acquiring) {
+        (void)snprintf(text, sizeof(text), "正在锁定，等待目标广播…");
+    } else if (model->target_valid && model->target_present &&
+               model->last_seen_age_ms > 2500U) {
+        (void)snprintf(text, sizeof(text), "信号不稳，继续走 · %u ms 前有信号",
+                       (unsigned)model->last_seen_age_ms);
+    } else if (model->target_valid && model->target_present) {
         (void)snprintf(text, sizeof(text), "信号更新 %u ms 前 · 目标在线",
                        (unsigned)model->last_seen_age_ms);
     } else {

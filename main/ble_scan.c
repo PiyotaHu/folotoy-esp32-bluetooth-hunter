@@ -1,8 +1,10 @@
 #include "ble_scan.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <string.h>
 
+#include "device_label.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -16,6 +18,21 @@
 #define BLE_SCAN_ITVL 160U   // 100 ms; dense enough for walking feedback
 #define BLE_SCAN_WINDOW 160U // continuous duty cycle: freshest RSSI we can get
 
+/* A busy room can produce hundreds of advertisements per second. Forwarding
+ * every one of them overflows the event queue and silently drops the packets
+ * that actually belong to the tracked device. Coalesce per address at ~10 Hz;
+ * a name-bearing scan response always gets through. */
+#define BLE_REPORT_MIN_INTERVAL_MS 90U
+#define BLE_THROTTLE_SLOTS 24U
+
+typedef struct {
+    uint8_t addr[FINDER_ADDR_LEN];
+    uint8_t addr_type;
+    uint32_t last_ms;
+    bool had_name;
+    bool used;
+} throttle_entry_t;
+
 static const char *TAG = "ble_scan";
 static ble_scan_callback_t s_callback;
 static void *s_context;
@@ -23,6 +40,8 @@ static uint8_t s_own_addr_type;
 static bool s_initialized;
 static bool s_synced;
 static volatile uint32_t s_dropped;
+static throttle_entry_t s_throttle[BLE_THROTTLE_SLOTS];
+static uint8_t s_throttle_cursor;
 
 static int gap_event(struct ble_gap_event *event, void *context);
 
@@ -42,26 +61,52 @@ static int start_scanning(void)
                         gap_event, NULL);
 }
 
-static uint8_t sanitize_char(uint8_t c)
+static bool should_forward(const ble_scan_report_t *report)
 {
-    if (c >= 0x20U && c < 0x7fU) {
-        return c;
+    throttle_entry_t *slot = NULL;
+    uint32_t now = report->timestamp_ms;
+
+    for (uint8_t i = 0U; i < BLE_THROTTLE_SLOTS; ++i) {
+        if (s_throttle[i].used &&
+            s_throttle[i].addr_type == report->addr_type &&
+            memcmp(s_throttle[i].addr, report->addr, FINDER_ADDR_LEN) == 0) {
+            slot = &s_throttle[i];
+            break;
+        }
     }
-    return '?';
+    if (slot == NULL) {
+        slot = &s_throttle[s_throttle_cursor];
+        s_throttle_cursor = (uint8_t)((s_throttle_cursor + 1U) %
+                                     BLE_THROTTLE_SLOTS);
+        memset(slot, 0, sizeof(*slot));
+        memcpy(slot->addr, report->addr, sizeof(slot->addr));
+        slot->addr_type = report->addr_type;
+        slot->used = true;
+        slot->last_ms = now;
+        slot->had_name = report->has_name;
+        return true;
+    }
+    /* The first name-bearing scan response must always get through, otherwise
+     * an anonymous advertiser stays a bare MAC forever. Once we have seen the
+     * name, ordinary packets are coalesced at ~10 Hz even if every single
+     * advertisement carries the Local Name. */
+    bool name_discovered = report->has_name && !slot->had_name;
+
+    if (!name_discovered &&
+        (uint32_t)(now - slot->last_ms) < BLE_REPORT_MIN_INTERVAL_MS) {
+        return false;
+    }
+    slot->last_ms = now;
+    slot->had_name = (bool)(slot->had_name || report->has_name);
+    return true;
 }
 
 static void process_discovery(const struct ble_gap_disc_desc *discovery)
 {
-    struct ble_hs_adv_fields fields;
+    device_label_info_t info;
     ble_scan_report_t report;
-    size_t name_length;
 
     if (discovery == NULL || s_callback == NULL) {
-        return;
-    }
-    memset(&fields, 0, sizeof(fields));
-    if (ble_hs_adv_parse_fields(&fields, discovery->data,
-                                discovery->length_data) != 0) {
         return;
     }
     memset(&report, 0, sizeof(report));
@@ -69,16 +114,16 @@ static void process_discovery(const struct ble_gap_disc_desc *discovery)
     report.addr_type = discovery->addr.type;
     report.rssi = discovery->rssi;
     report.timestamp_ms = (uint32_t)(esp_timer_get_time() / 1000);
-    if (fields.name != NULL && fields.name_len > 0U) {
-        name_length = fields.name_len;
-        if (name_length >= FINDER_NAME_LEN) {
-            name_length = FINDER_NAME_LEN - 1U;
-        }
-        for (size_t i = 0U; i < name_length; ++i) {
-            report.name[i] = (char)sanitize_char(fields.name[i]);
-        }
-        report.name[name_length] = '\0';
-        report.has_name = true;
+
+    /* The old path called ble_hs_adv_parse_fields() and returned on any
+     * parse error, throwing away the RSSI too. This decoder is total: even
+     * malformed or unknown advertising data still updates the signal. */
+    device_label_info_init(&info);
+    device_label_parse_ad(discovery->data, discovery->length_data, &info);
+    device_label_apply(&info, &report);
+
+    if (!should_forward(&report)) {
+        return;
     }
     s_callback(&report, s_context);
 }

@@ -8,6 +8,7 @@ endif()
 idf_component_register(
     SRCS "main.c"
          "signal_filter.c"
+         "device_label.c"
          ${FINDER_BLE_SOURCE}
          "finder_model.c"
          "finder_storage.c"

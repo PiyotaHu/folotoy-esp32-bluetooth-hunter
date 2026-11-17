@@ -6,7 +6,22 @@
 #define FINDER_MAX_DEVICES 12U
 #define FINDER_LIST_ROWS 5U
 #define FINDER_NAME_LEN 32U
+#define FINDER_LABEL_LEN 24U
 #define FINDER_ADDR_LEN 6U
+
+/* Best-effort device category inferred from advertising data. The label shown
+ * in the list is ASCII so it never depends on the bundled CJK glyph subset. */
+typedef enum {
+    FINDER_KIND_UNKNOWN = 0,
+    FINDER_KIND_EARBUDS,
+    FINDER_KIND_PHONE,
+    FINDER_KIND_WATCH,
+    FINDER_KIND_TAG,
+    FINDER_KIND_COMPUTER,
+    FINDER_KIND_SPEAKER,
+    FINDER_KIND_BEACON,
+    FINDER_KIND_OTHER,
+} finder_device_kind_t;
 
 typedef enum {
     FINDER_STATE_SCAN = 0,
@@ -68,7 +83,10 @@ typedef struct {
     uint8_t addr[FINDER_ADDR_LEN];
     uint8_t addr_type;
     char name[FINDER_NAME_LEN];
+    char label[FINDER_LABEL_LEN];
+    finder_device_kind_t kind;
     bool has_name;
+    bool label_inferred;
 } finder_target_t;
 
 typedef struct {
@@ -82,7 +100,10 @@ typedef struct {
     uint8_t addr[FINDER_ADDR_LEN];
     uint8_t addr_type;
     char name[FINDER_NAME_LEN];
+    char label[FINDER_LABEL_LEN];
+    finder_device_kind_t kind;
     bool has_name;
+    bool label_inferred;
     int8_t raw_rssi;
     int8_t filtered_rssi;
     uint32_t first_seen_ms;
@@ -100,11 +121,13 @@ typedef struct {
     finder_target_t target;
     bool target_valid;
     bool target_present;
+    bool target_acquiring;
     int8_t target_rssi;
     finder_level_t level;
     finder_trend_t trend;
     int8_t trend_delta_db;
     uint32_t last_seen_age_ms;
+    uint32_t target_locked_age_ms;
     int16_t battery;
     finder_preferences_t prefs;
     finder_device_view_t devices[FINDER_MAX_DEVICES];

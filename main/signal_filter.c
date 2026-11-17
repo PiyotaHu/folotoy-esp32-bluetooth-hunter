@@ -6,11 +6,16 @@
 
 #define Q8_ONE 256
 
+/* Real consumer devices advertise far slower than the 100 ms scan interval:
+ * idle earbuds, phones and trackers commonly sit at 1-3 s, occasionally more.
+ * The old 1.2-2 s "unseen" window reset the filter between ordinary packets,
+ * which is why tracking kept falling back to "no signal". Keep these generous
+ * enough to ride out real broadcast gaps; the level still decays on tick. */
 static const signal_config_t PROFILE_FAST = {
     .thresholds = {-83, -72, -61, -49},
     .hysteresis_db = 3,
     .ema_shift = 2,           // alpha = 1/4: responsive, still damped
-    .unseen_timeout_ms = 1200,
+    .unseen_timeout_ms = 4000,
     .trend_window_ms = 1400,
 };
 
@@ -18,7 +23,7 @@ static const signal_config_t PROFILE_NORMAL = {
     .thresholds = {-83, -72, -61, -49},
     .hysteresis_db = 4,
     .ema_shift = 3,           // alpha = 1/8
-    .unseen_timeout_ms = 1500,
+    .unseen_timeout_ms = 5000,
     .trend_window_ms = 1800,
 };
 
@@ -26,7 +31,7 @@ static const signal_config_t PROFILE_STABLE = {
     .thresholds = {-83, -72, -61, -49},
     .hysteresis_db = 5,
     .ema_shift = 4,           // alpha = 1/16
-    .unseen_timeout_ms = 2000,
+    .unseen_timeout_ms = 6500,
     .trend_window_ms = 2400,
 };
 
@@ -211,6 +216,15 @@ finder_level_t signal_filter_tick(signal_filter_t *filter, uint32_t now_ms)
     }
     if (!signal_filter_fresh(filter, now_ms)) {
         reset_samples(filter);
+    }
+    return filter->level;
+}
+
+finder_level_t signal_filter_peek_level(const signal_filter_t *filter,
+                                       uint32_t now_ms)
+{
+    if (filter == NULL || !signal_filter_fresh(filter, now_ms)) {
+        return FINDER_LEVEL_OUT;
     }
     return filter->level;
 }
