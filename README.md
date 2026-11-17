@@ -1,6 +1,6 @@
-# 蓝牙信号猎手 / BLE Signal Finder
+# 蓝牙寻物探测器 / BLE Signal Finder
 
-<p align="center"><img src="assets/cover.png" alt="蓝牙信号猎手封面" width="720"></p>
+<p align="center"><img src="assets/cover.png" alt="蓝牙寻物探测器封面" width="720"></p>
 
 [English](README.en.md) · 简体中文 · [简体中文详版](README.zh_CN.md) · [社区元数据](docs/release/community-metadata.zh_CN.md) · [发布说明](docs/release/RELEASE_NOTES.zh_CN.md)
 
@@ -10,7 +10,7 @@
 
 ## 功能
 
-- 扫描周围 BLE 广播设备，显示广播名或 MAC、滤波后的 dBm 和强度条。
+- 扫描周围 BLE 广播设备，显示可读设备名（没有广播名时按厂商数据、外观、服务 UUID 推断，如 `Apple Earbuds 4C:19`）、滤波后的 dBm 和强度条；列表按首次发现顺序稳定排列，不会随信号抖动上下跳。
 - 上下键选中目标，按 OK 锁定；目标与偏好设置掉电保存。
 - 追踪界面同时给出：
   - 大号 **dBm 数值**；
@@ -23,6 +23,17 @@
   - 锁定、设置、极近确认都有反馈。
 - 4 档设置：提示音开关、音量、名称匹配、滤波档位（快速 / 标准 / 稳定）。
 - 中文点阵字体子集随固件内置，不依赖手机或云端。
+
+## v1.0.1 修了什么
+
+社区审核反馈「画面卡住」，实机还出现列表乱跳、只有 MAC、锁定后常报无信号。这一版把四个问题一起修掉：
+
+- **主循环让出 CPU**：每轮最多处理 8 个事件并固定 `vTaskDelay(1)`，IDLE 与 LVGL 刷新任务不再被密集广播饿死；广播按地址约 10 Hz 合并，事件队列不再溢出。
+- **列表不再跳**：排序键改用带 12 dB 滞回的平滑值，光标绑定设备地址而不是行号，OK 锁定的一定是高亮那台。
+- **看得懂设备名**：换成容错 AD 结构解析，解析失败也不丢 RSSI；无名设备从厂商数据 / Appearance / 16-bit UUID 推断类型并给出 ASCII 标签。
+- **追踪不掉线**：目标使用独立滤波器，不再受 12 行列表淘汰影响；未收到广播的超时放宽到适配手机、耳机 1–3 秒的广播间隔，并区分「正在锁定 / 信号不稳 / 离开范围」。
+
+对应回归测试：`tests/test_finder_stability.c`、`tests/test_device_label.c`；`./tests/run_host_tests.sh` 与 `./tools/validate.sh --static` 均可通过。
 
 ## 交互
 

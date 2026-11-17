@@ -10,7 +10,7 @@ Turn an AI Passport into a pocket signal detector for phones, earbuds, tags, and
 
 ## Features
 
-- Continuously scans BLE advertisements and shows the advertised name or MAC, filtered dBm, and a strength bar.
+- Continuously scans BLE advertisements and shows a readable label (inferred from manufacturer data, Appearance or service UUID when no Local Name is broadcast), filtered dBm, and a strength bar. The list keeps a stable order and never reshuffles on RSSI jitter.
 - Select a device with UP/DOWN and lock it with OK; the target and preferences persist across reboots.
 - Tracking screen shows:
   - a large dBm reading;
@@ -22,6 +22,17 @@ Turn an AI Passport into a pocket signal detector for phones, earbuds, tags, and
   - distinct tones for trend changes, locking, settings, and very-close confirmation.
 - Four settings: sound, volume, name matching, and filter profile (FAST / NORMAL / STABLE).
 - A generated Chinese bitmap font is bundled; no phone or cloud dependency at runtime.
+
+## What v1.0.1 fixes
+
+Community review asked for the LVGL task to yield CPU to IDLE, and real-device testing also showed a jumping list, MAC-only rows, and frequent "no signal" right after locking. v1.0.1 addresses all four:
+
+- **CPU yield**: the main loop drains at most 8 events per pass and always calls `vTaskDelay(1)`; advertisements are coalesced per address at about 10 Hz so the event queue cannot flood.
+- **Stable list**: ordering uses a smoothed key with 12 dB hysteresis and first-seen order; the cursor follows a device address instead of a row index, so OK always locks the highlighted device.
+- **Readable labels**: a total AD-structure decoder never drops a report on malformed data, and infers an ASCII device label from manufacturer data, Appearance and 16-bit UUIDs.
+- **Reliable tracking**: the target owns an independent filter that survives list eviction, inherits samples collected on the scan screen, and uses freshness windows long enough for phones and earbuds advertising every 1-3 s.
+
+Regression coverage lives in `tests/test_finder_stability.c` and `tests/test_device_label.c`; both `./tests/run_host_tests.sh` and `./tools/validate.sh --static` pass.
 
 ## Controls
 

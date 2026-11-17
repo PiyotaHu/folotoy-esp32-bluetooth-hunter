@@ -1,2 +1,2 @@
-b9589914dbf130234dc61cf6fffcdc626b0efd318d7d16b57c91247218a1e78a *release/FoloToy-AI-Passport-full.bin
-84adcf7236546067a8b43cfb1d300e398154d16961d88c295798418ae595deb0 *release/cover_3x4.jpg
+493f13313e035fd023454eeb86364fc17b333a71b21d5559362d9410fe3fc98e *release/FoloToy-AI-Passport-full.bin
+063bd38c2f42823bdd86501390464cb14906f5cf181dce4d3317f93a8bbf712d *release/cover_3x4.jpg
